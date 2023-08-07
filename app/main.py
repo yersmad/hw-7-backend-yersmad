@@ -18,8 +18,7 @@ users_repository = UsersRepository()
 def encode_jwt(username: str):
     body = {"username": username}
     token = jwt.encode(body, "test", 'HS256')
-    dict_token = {"token": token}
-    return dict_token["token"]
+    return token
 
 
 def decode_jwt(token: str):
@@ -74,8 +73,8 @@ def post_login(
 
 @app.get("/profile")
 def get_profile(token: str=Depends(oauth2_scheme)):
-    user_name = decode_jwt(token=token)
-    user = users_repository.get_user_by_username(username=user_name)
+    decode_username = decode_jwt(token=token)
+    user = users_repository.get_user_by_username(username=decode_username)
 
     if not user:
         return Response(
@@ -104,7 +103,7 @@ def post_flowers(
     cost: int=Form(),
     token: str=Depends(oauth2_scheme)
 ):
-    flower = Flower(name=name, count=count, cost=cost)
+    flower = {"name": name, "count": count, "cost": cost}
     if flowers_repository.get_flower_by_name(name=name):
         return Response(
             content=b"Flower is already exists\n",
@@ -112,27 +111,6 @@ def post_flowers(
             status_code=403
         ) 
 
-    new_flower = flowers_repository.save_flower(flower=flower)
-    return {"id": new_flower.id}
-
-
-@app.post("/cart/items")
-def post_cart(
-    flower_id: int=Form(),
-    cart: str=Cookie(default="[]"),
-    token: str=Depends(oauth2_scheme)
-):
-    flower = flowers_repository.get_flower_by_id(id=flower_id)
-    cart_json = json.loads(cart)
-    if flower:
-        cart_json.append(flower_id)
-        new_cart = json.dumps(cart_json)
-
-    response = Response(status_code=200)
-    response.set_cookie(new_cart)
-    return response
-
-
-# @app.get("/cart/items")
-# def get_cart(token: str=Depends(oauth2_scheme)):
-
+    flowers_repository.save_flower(flower=flower)
+    new_flower = flowers_repository.get_flower_by_name(name=name)
+    return {"id": new_flower["id"]}
